@@ -65,12 +65,22 @@ func resourceKubernetesClusterNodePool() *pluginsdk.Resource {
 
 		CustomizeDiff: pluginsdk.CustomDiffInSequence(
 			pluginsdk.ForceNewIfChange("os_sku", func(ctx context.Context, old, new, meta interface{}) bool {
-				// Ubuntu and AzureLinux are currently the only allowed Linux OSSKU Migration targets.
-				if old != string(agentpools.OSSKUUbuntu) && old != string(agentpools.OSSKUAzureLinux) {
-					return true
+				// Ubuntu, Ubuntu2204, and AzureLinux are currently the only allowed Linux OSSKU Migration targets.
+				validLinuxOsSkus := []string{string(agentpools.OSSKUUbuntu), "Ubuntu2204", string(agentpools.OSSKUAzureLinux)}
+				
+				oldValid := false
+				newValid := false
+				
+				for _, validSku := range validLinuxOsSkus {
+					if old == validSku {
+						oldValid = true
+					}
+					if new == validSku {
+						newValid = true
+					}
 				}
-
-				if new != string(agentpools.OSSKUUbuntu) && new != string(agentpools.OSSKUAzureLinux) {
+				
+				if !oldValid || !newValid {
 					return true
 				}
 
@@ -262,6 +272,7 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 			ValidateFunc: validation.StringInSlice([]string{
 				string(agentpools.OSSKUAzureLinux),
 				string(agentpools.OSSKUUbuntu),
+				"Ubuntu2204", // Ubuntu 22.04 LTS
 				string(agentpools.OSSKUWindowsTwoZeroOneNine),
 				string(agentpools.OSSKUWindowsTwoZeroTwoTwo),
 			}, false),
@@ -922,15 +933,25 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 
 	// if the node pool name has changed, it means the initial attempt at resizing failed
 	cycleNodePool := d.HasChanges(cycleNodePoolProperties...)
-	// os_sku can only be updated if the current and new os_sku are either Ubuntu or AzureLinux
+	// os_sku can only be updated if the current and new os_sku are either Ubuntu, Ubuntu2204, or AzureLinux
 	if d.HasChange("os_sku") {
 		oldOsSkuRaw, newOsSkuRaw := d.GetChange("os_sku")
 		oldOsSku := oldOsSkuRaw.(string)
 		newOsSku := newOsSkuRaw.(string)
-		if oldOsSku != string(managedclusters.OSSKUUbuntu) && oldOsSku != string(managedclusters.OSSKUAzureLinux) {
-			cycleNodePool = true
+		validOsSkus := []string{string(managedclusters.OSSKUUbuntu), "Ubuntu2204", string(managedclusters.OSSKUAzureLinux)}
+		
+		oldOsSkuValid := false
+		newOsSkuValid := false
+		for _, validSku := range validOsSkus {
+			if oldOsSku == validSku {
+				oldOsSkuValid = true
+			}
+			if newOsSku == validSku {
+				newOsSkuValid = true
+			}
 		}
-		if newOsSku != string(managedclusters.OSSKUUbuntu) && newOsSku != string(managedclusters.OSSKUAzureLinux) {
+		
+		if !oldOsSkuValid || !newOsSkuValid {
 			cycleNodePool = true
 		}
 	}
