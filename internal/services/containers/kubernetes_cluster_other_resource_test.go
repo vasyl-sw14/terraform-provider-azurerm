@@ -737,6 +737,14 @@ func TestAccKubernetesCluster_osSkuUpdate(t *testing.T) {
 		},
 		data.ImportStep(),
 		{
+			Config: r.osSku(data, "Ubuntu2204"),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("default_node_pool.0.os_sku").HasValue("Ubuntu2204"),
+			),
+		},
+		data.ImportStep(),
+		{
 			Config: r.osSku(data, "AzureLinux"),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),

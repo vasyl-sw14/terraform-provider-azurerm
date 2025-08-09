@@ -2483,15 +2483,25 @@ func resourceKubernetesClusterUpdate(d *pluginsdk.ResourceData, meta interface{}
 
 		// if the default node pool name has changed, it means the initial attempt at resizing failed
 		cycleNodePool := d.HasChanges(cycleNodePoolProperties...)
-		// os_sku could only be updated if the current and new os_sku are either Ubuntu or AzureLinux
+		// os_sku could only be updated if the current and new os_sku are either Ubuntu, Ubuntu2204, or AzureLinux
 		if d.HasChange("default_node_pool.0.os_sku") {
 			oldOsSkuRaw, newOsSkuRaw := d.GetChange("default_node_pool.0.os_sku")
 			oldOsSku := oldOsSkuRaw.(string)
 			newOsSku := newOsSkuRaw.(string)
-			if oldOsSku != string(managedclusters.OSSKUUbuntu) && oldOsSku != string(managedclusters.OSSKUAzureLinux) {
-				cycleNodePool = true
+			validOsSkus := []string{string(managedclusters.OSSKUUbuntu), "Ubuntu2204", string(managedclusters.OSSKUAzureLinux)}
+			
+			oldOsSkuValid := false
+			newOsSkuValid := false
+			for _, validSku := range validOsSkus {
+				if oldOsSku == validSku {
+					oldOsSkuValid = true
+				}
+				if newOsSku == validSku {
+					newOsSkuValid = true
+				}
 			}
-			if newOsSku != string(managedclusters.OSSKUUbuntu) && newOsSku != string(managedclusters.OSSKUAzureLinux) {
+			
+			if !oldOsSkuValid || !newOsSkuValid {
 				cycleNodePool = true
 			}
 		}
